@@ -169,27 +169,14 @@
   #rollBtn:active:not(:disabled){transform:translateX(-50%) translateY(5px);box-shadow:0 3px 0 #94160f,0 8px 16px rgba(0,0,0,.4);}
   #rollBtn:disabled{cursor:not-allowed;filter:grayscale(.6) brightness(.72);box-shadow:0 4px 0 #7a7a7a,0 10px 18px rgba(0,0,0,.3);}
 
-  /* ---------- 竖屏引导 ---------- */
-  #rotateOverlay{
-    position:fixed;inset:0;background:#0a0a0c;z-index:100;
-    display:none;flex-direction:column;align-items:center;justify-content:center;gap:5vmin;
+  /* ---------- 竖屏适配（骰子切换为上下菱形排布，与横屏左2/中1/右2 结构旋转 90°） ---------- */
+  @media (orientation: portrait){
+    .d1{left:10%;top:16%;}
+    .d4{right:10%;top:16%;}
+    .d2{left:14%;bottom:26%;}
+    .d5{right:14%;bottom:26%;}
+    #rollBtn{bottom:calc(6vmin + env(safe-area-inset-bottom));}
   }
-  #rotateOverlay.show{display:flex;}
-  .phone-icon{
-    width:clamp(60px,16vmin,110px);height:clamp(100px,26vmin,180px);
-    border:3px solid #fff;border-radius:14px;position:relative;
-    animation:spinHint 1.7s ease-in-out infinite;
-  }
-  .phone-icon::before{
-    content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);
-    width:24%;height:4px;border-radius:2px;background:#fff;opacity:.6;
-  }
-  @keyframes spinHint{
-    0%{transform:rotate(0);}
-    55%{transform:rotate(-90deg);}
-    100%{transform:rotate(-90deg);}
-  }
-  #rotateOverlay p{font-size:clamp(15px,3.2vmin,22px);letter-spacing:.18em;color:rgba(255,255,255,.85);}
 </style>
 </head>
 <body>
@@ -206,17 +193,11 @@
   <button id="rollBtn" type="button">PUSH</button>
 </div>
 
-<div id="rotateOverlay">
-  <div class="phone-icon"></div>
-  <p>请横屏使用</p>
-</div>
-
 <script>
 (function(){
   'use strict';
   var dice  = Array.prototype.slice.call(document.querySelectorAll('.dice'));
   var btn   = document.getElementById('rollBtn');
-  var overlay = document.getElementById('rotateOverlay');
   var rolling = false, ctx = null, timer = null;
   var vals = [0,0,0,0,0]; /* 当前各骰子点数（0 = 未摇，显示 ?） */
 
@@ -361,20 +342,7 @@
     d.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   });
 
-  /* ---------- 竖屏检测 ---------- */
-  function checkOrient(){
-    var land = window.matchMedia('(orientation: landscape)').matches;
-    overlay.classList.toggle('show', !land);
-  }
-
   btn.addEventListener('click', roll);
-  if (window.matchMedia) {
-    var mq = window.matchMedia('(orientation: landscape)');
-    if (mq.addEventListener) mq.addEventListener('change', checkOrient);
-    else if (mq.addListener) mq.addListener(checkOrient);
-  }
-  window.addEventListener('resize', checkOrient);
-  checkOrient();
 
   /* 初始待命状态：骰子显示 ? */
   dice.forEach(function(d){ d.classList.add('idle'); });
