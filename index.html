@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>大话骰 · 摇骰工具</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+<style>
+  :root{
+    --dice: clamp(64px, 19vmin, 150px);
+    --btn-h: clamp(42px, 9vmin, 64px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;}
+  body{
+    background:
+      radial-gradient(circle at 18% 20%, rgba(96,106,140,.30) 0%, transparent 45%),
+      radial-gradient(circle at 84% 80%, rgba(74,84,116,.26) 0%, transparent 42%),
+      #0b0b0d;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#fff;
+    user-select:none;-webkit-user-select:none;
+  }
+  #app{position:fixed;inset:0;}
+
+  /* ---------- 桌台（黑灰碳纤维 + 毛玻璃覆盖） ---------- */
+  .table{
+    position:absolute;inset:1.5vmin;
+    top:calc(1.5vmin + env(safe-area-inset-top));
+    border-radius:4.5vmin;
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.10),
+      inset 0 0 44px rgba(0,0,0,.55),
+      0 14px 34px rgba(0,0,0,.5);
+  }
+  .table::before{ /* 底层：碳纤维编织纹理（加粗放大，确保透过玻璃可见） */
+    content:"";position:absolute;inset:0;border-radius:inherit;
+    background:
+      repeating-linear-gradient(45deg, rgba(0,0,0,.50) 0 2.5px, transparent 2.5px 7px),
+      repeating-linear-gradient(-45deg, rgba(0,0,0,.50) 0 2.5px, transparent 2.5px 7px),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px),
+      linear-gradient(160deg,#34363c 0%,#1e1f24 55%,#131417 100%);
+    pointer-events:none;
+  }
+  .table::after{ /* 上层：极轻毛玻璃（轻度雾化，不遮挡碳纤维纹理） */
+    content:"";position:absolute;inset:0;border-radius:inherit;z-index:0;
+    background:linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015) 45%, rgba(8,10,14,.14));
+    -webkit-backdrop-filter:blur(4px) saturate(1.1);
+    backdrop-filter:blur(4px) saturate(1.1);
+    pointer-events:none;
+  }
+
+  /* ---------- 骰子 ---------- */
+  .dice{
+    position:absolute;z-index:1;width:var(--dice);height:var(--dice);border-radius:18%;
+    background:linear-gradient(160deg,#ffffff,#e9e9ea);
+    box-shadow:inset 0 -3px 5px rgba(0,0,0,.16), inset 0 2px 3px rgba(255,255,255,.95), 0 7px 12px rgba(0,0,0,.42);
+    display:flex;align-items:center;justify-content:center;
+    will-change:transform;
+    -webkit-touch-callout:none;touch-action:none;cursor:pointer;
+  }
+  .d1{left:12%;top:10%;}
+  .d2{left:18%;bottom:18%;}
+  .d3{left:50%;top:50%;margin-left:calc(var(--dice)/-2);margin-top:calc(var(--dice)/-2);}
+  .d4{right:12%;top:10%;}
+  .d5{right:18%;bottom:18%;}
+
+  .face{position:relative;width:100%;height:100%;padding:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2%;}
+  .pip{width:70%;height:70%;place-self:center;border-radius:50%;background:#17171a;opacity:0;transform:scale(.3);transition:opacity .04s;}
+  .pip.on{opacity:1;transform:scale(1);}
+  .pip.red{background:#d82727;}
+  .q{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(var(--dice)*.52);font-weight:800;color:rgba(30,30,35,.32);opacity:0;transition:opacity .1s;}
+  .dice.idle .q{opacity:1;}
+  .dice.idle .pip{opacity:0;}
+
+  /* ---------- 摇动动画（1.95s） ---------- */
+  .dice.rolling{animation:shake 1.95s cubic-bezier(.36,.07,.19,.97) both;}
+  .d1.rolling{animation-name:shake1;}
+  .d2.rolling{animation-name:shake2;}
+  .d3.rolling{animation-name:shake3;}
+  .d4.rolling{animation-name:shake4;}
+  .d5.rolling{animation-name:shake5;}
+  @keyframes shake1{
+    0%{transform:translate(0,0) rotate(0);}
+    10%{transform:translate(-2.4vmin,-1.2vmin) rotate(-16deg);}
+    25%{transform:translate(1.8vmin,1.5vmin) rotate(13deg) scale(1.07);}
+    40%{transform:translate(-1.5vmin,1.9vmin) rotate(-11deg);}
+    55%{transform:translate(2vmin,-1.7vmin) rotate(16deg);}
+    70%{transform:translate(-1.3vmin,1.1vmin) rotate(-9deg);}
+    85%{transform:translate(1.1vmin,-.9vmin) rotate(7deg);}
+    100%{transform:translate(0,0) rotate(0);}
+  }
+  @keyframes shake2{
+    0%{transform:translate(0,0) rotate(0);}
+    12%{transform:translate(2.2vmin,-1.4vmin) rotate(15deg);}
+    28%{transform:translate(-1.7vmin,1.6vmin) rotate(-14deg) scale(1.06);}
+    44%{transform:translate(1.4vmin,1.8vmin) rotate(12deg);}
+    58%{transform:translate(-2.1vmin,-1.5vmin) rotate(-15deg);}
+    72%{transform:translate(1.2vmin,-1.2vmin) rotate(9deg);}
+    86%{transform:translate(-1vmin,.8vmin) rotate(-6deg);}
+    100%{transform:translate(0,0) rotate(0);}
+  }
+  @keyframes shake3{
+    0%{transform:translate(0,0) rotate(0) scale(1);}
+    15%{transform:translate(-1.6vmin,-1.8vmin) rotate(-18deg) scale(1.1);}
+    30%{transform:translate(1.9vmin,.9vmin) rotate(14deg);}
+    45%{transform:translate(-2vmin,1.4vmin) rotate(-12deg);}
+    60%{transform:translate(1.5vmin,-1.9vmin) rotate(17deg) scale(.95);}
+    75%{transform:translate(-1.1vmin,1.3vmin) rotate(-10deg);}
+    88%{transform:translate(.9vmin,-.7vmin) rotate(6deg);}
+    100%{transform:translate(0,0) rotate(0) scale(1);}
+  }
+  @keyframes shake4{
+    0%{transform:translate(0,0) rotate(0);}
+    10%{transform:translate(2.5vmin,1.1vmin) rotate(14deg);}
+    26%{transform:translate(-1.8vmin,-1.5vmin) rotate(-15deg) scale(1.05);}
+    42%{transform:translate(1.6vmin,-1.8vmin) rotate(11deg);}
+    56%{transform:translate(-1.9vmin,1.6vmin) rotate(-13deg);}
+    70%{transform:translate(1.3vmin,1.2vmin) rotate(9deg);}
+    85%{transform:translate(-1.1vmin,-.9vmin) rotate(-7deg);}
+    100%{transform:translate(0,0) rotate(0);}
+  }
+  @keyframes shake5{
+    0%{transform:translate(0,0) rotate(0);}
+    12%{transform:translate(-2.1vmin,1.3vmin) rotate(-15deg);}
+    27%{transform:translate(1.7vmin,-1.6vmin) rotate(12deg) scale(1.06);}
+    43%{transform:translate(-1.4vmin,-1.9vmin) rotate(-13deg);}
+    59%{transform:translate(2vmin,1.4vmin) rotate(16deg);}
+    74%{transform:translate(-1.2vmin,-1.1vmin) rotate(-8deg);}
+    87%{transform:translate(1vmin,.9vmin) rotate(6deg);}
+    100%{transform:translate(0,0) rotate(0);}
+  }
+  /* 定格回弹 */
+  .dice.settle{animation:settle .5s cubic-bezier(.2,1.7,.35,1) both;}
+  @keyframes settle{
+    0%{transform:scale(1.22);}
+    55%{transform:scale(.93);}
+    100%{transform:scale(1);}
+  }
+
+  /* ---------- 操作按钮（红色） ---------- */
+  #rollBtn{
+    position:absolute;left:50%;bottom:calc(5vmin + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    width:min(46vw,230px);height:var(--btn-h);
+    border:none;border-radius:999px;cursor:pointer;z-index:4;
+    background:linear-gradient(180deg,#ff5b4b,#d8271c);
+    box-shadow:0 8px 0 #94160f,0 14px 24px rgba(0,0,0,.45),inset 0 2px 2px rgba(255,255,255,.35);
+    color:#fff;font-size:clamp(16px,3.4vmin,24px);font-weight:800;letter-spacing:.22em;text-indent:.22em;
+    transition:transform .12s, box-shadow .12s, filter .12s;
+  }
+  #rollBtn:active:not(:disabled){transform:translateX(-50%) translateY(5px);box-shadow:0 3px 0 #94160f,0 8px 16px rgba(0,0,0,.4);}
+  #rollBtn:disabled{cursor:not-allowed;filter:grayscale(.6) brightness(.72);box-shadow:0 4px 0 #7a7a7a,0 10px 18px rgba(0,0,0,.3);}
+
+  /* ---------- 竖屏引导 ---------- */
+  #rotateOverlay{
+    position:fixed;inset:0;background:#0a0a0c;z-index:100;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:5vmin;
+  }
+  #rotateOverlay.show{display:flex;}
+  .phone-icon{
+    width:clamp(60px,16vmin,110px);height:clamp(100px,26vmin,180px);
+    border:3px solid #fff;border-radius:14px;position:relative;
+    animation:spinHint 1.7s ease-in-out infinite;
+  }
+  .phone-icon::before{
+    content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);
+    width:24%;height:4px;border-radius:2px;background:#fff;opacity:.6;
+  }
+  @keyframes spinHint{
+    0%{transform:rotate(0);}
+    55%{transform:rotate(-90deg);}
+    100%{transform:rotate(-90deg);}
+  }
+  #rotateOverlay p{font-size:clamp(15px,3.2vmin,22px);letter-spacing:.18em;color:rgba(255,255,255,.85);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="table" id="table">
+    <div class="dice d1"><div class="face"><span class="q">?</span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="dice d2"><div class="face"><span class="q">?</span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="dice d3"><div class="face"><span class="q">?</span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="dice d4"><div class="face"><span class="q">?</span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="dice d5"><div class="face"><span class="q">?</span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+  </div>
+
+  <button id="rollBtn" type="button">PUSH</button>
+</div>
+
+<div id="rotateOverlay">
+  <div class="phone-icon"></div>
+  <p>请横屏使用</p>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var dice  = Array.prototype.slice.call(document.querySelectorAll('.dice'));
+  var btn   = document.getElementById('rollBtn');
+  var overlay = document.getElementById('rotateOverlay');
+  var rolling = false, ctx = null, timer = null;
+  var vals = [0,0,0,0,0]; /* 当前各骰子点数（0 = 未摇，显示 ?） */
+
+  /* 传统骰子点数布局（3x3 网格，索引 0-8） */
+  var PIPS = {
+    1:[4], 2:[2,6], 3:[2,4,6], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]
+  };
+
+  function setFace(el, val){
+    el.classList.remove('idle');
+    var pips = el.querySelectorAll('.pip');
+    for (var i = 0; i < pips.length; i++){ pips[i].classList.remove('on'); pips[i].classList.remove('red'); }
+    if (val >= 1 && val <= 6){
+      var list = PIPS[val];
+      for (var j = 0; j < list.length; j++) pips[list[j]].classList.add('on');
+      if (val === 1) pips[4].classList.add('red'); /* 1 点红色，中式骰子习惯 */
+    }
+  }
+
+  /* 加密级均匀随机 1~6（拒绝采样，无模数偏差） */
+  function randInt(){
+    var a = new Uint32Array(1);
+    var max = Math.floor(0xFFFFFFFF / 6) * 6;
+    var v;
+    if (window.crypto && crypto.getRandomValues){
+      do { crypto.getRandomValues(a); v = a[0]; } while (v >= max);
+      return (v % 6) + 1;
+    }
+    return Math.floor(Math.random() * 6) + 1; /* 降级方案 */
+  }
+
+  /* ---------- 轻量音效（Web Audio 合成，无外部资源） ---------- */
+  function ensureAudio(){
+    if (!ctx){ try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+  function blip(freq, dur, vol, type){
+    if (!ctx) return;
+    try {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + dur);
+    } catch(e){}
+  }
+  function rattle(vol){
+    if (!ctx) return;
+    try {
+      var sr = ctx.sampleRate, dur = 0.06 + Math.random() * 0.06;
+      var buf = ctx.createBuffer(1, Math.floor(sr * dur), sr);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      var s = ctx.createBufferSource(); s.buffer = buf;
+      var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 1400; f.Q.value = 0.9;
+      var g = ctx.createGain(); g.gain.value = (vol || 0.28) * (0.6 + Math.random() * 0.4);
+      s.connect(f); f.connect(g); g.connect(ctx.destination);
+      s.start();
+    } catch(e){}
+  }
+  function buzz(ms){ try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){} }
+
+  /* ---------- 核心流程 ---------- */
+  function roll(){
+    if (rolling) return;
+    cancelCheat();
+    rolling = true;
+    btn.disabled = true;
+    btn.textContent = 'PUSH';
+    ensureAudio();
+    blip(660, 0.09, 0.2, 'triangle');
+    buzz([25, 30, 25, 30, 70]);
+
+    dice.forEach(function(d, i){
+      d.classList.remove('idle', 'settle');
+      d.classList.add('rolling');
+      d.style.animationDelay = (i * 0.06) + 's';
+    });
+
+    var elapsed = 0, lastTick = 0;
+    timer = setInterval(function(){
+      elapsed += 70;
+      dice.forEach(function(d){ setFace(d, randInt()); });
+      if (Date.now() - lastTick > 160){ rattle(0.28); lastTick = Date.now(); }
+      if (elapsed >= 1950){
+        clearInterval(timer);
+        finish();
+      }
+    }, 70);
+  }
+
+  function finish(){
+    vals = dice.map(function(){ return randInt(); });
+    dice.forEach(function(d, i){
+      setFace(d, vals[i]);
+      d.classList.remove('rolling');
+      d.classList.add('settle');
+      d.style.animationDelay = (i * 0.05) + 's';
+    });
+
+    rattle(0.18); blip(520, 0.1, 0.15, 'triangle'); buzz(50);
+    rolling = false;
+    btn.disabled = false;
+    btn.textContent = 'PUSH';
+  }
+
+  /* ---------- 长按作弊（隐蔽模式）：按住某骰子 5 秒，其余骰子直接变成它的点数，全程无任何视觉/触觉反馈 ---------- */
+  var cheat = { idx:-1, t:null };
+  var CHEAT_MS = 5000;
+
+  function cancelCheat(){
+    if (cheat.t) clearTimeout(cheat.t);
+    cheat.t = null;
+    cheat.idx = -1;
+  }
+
+  function applyCheat(){
+    var v = vals[cheat.idxWas];
+    cancelCheat();
+    if (!v) return;
+    for (var i = 0; i < dice.length; i++){
+      if (i === cheat.idxWas) continue;
+      vals[i] = v;
+      setFace(dice[i], v); /* 直接换点数，无回弹动画、无声音、无振动 */
+    }
+  }
+
+  function startCheat(i){
+    if (rolling) return;             /* 摇动中不可用 */
+    if (vals[i] < 1) return;         /* 骰子还是 ? 状态不可用 */
+    cancelCheat();
+    cheat.idx = i; cheat.idxWas = i;
+    cheat.t = setTimeout(applyCheat, CHEAT_MS);
+  }
+
+  dice.forEach(function(d, i){
+    d.addEventListener('pointerdown', function(e){ e.preventDefault(); startCheat(i); });
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){
+      d.addEventListener(ev, cancelCheat);
+    });
+    d.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  });
+
+  /* ---------- 竖屏检测 ---------- */
+  function checkOrient(){
+    var land = window.matchMedia('(orientation: landscape)').matches;
+    overlay.classList.toggle('show', !land);
+  }
+
+  btn.addEventListener('click', roll);
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(orientation: landscape)');
+    if (mq.addEventListener) mq.addEventListener('change', checkOrient);
+    else if (mq.addListener) mq.addListener(checkOrient);
+  }
+  window.addEventListener('resize', checkOrient);
+  checkOrient();
+
+  /* 初始待命状态：骰子显示 ? */
+  dice.forEach(function(d){ d.classList.add('idle'); });
+})();
+</script>
+</body>
+</html>
