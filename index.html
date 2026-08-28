@@ -171,8 +171,9 @@
 
   /* ---------- 竖屏适配（骰子切换为上下菱形排布，与横屏左2/中1/右2 结构旋转 90°） ---------- */
   @media (orientation: portrait){
-    .d1{left:10%;top:16%;}
-    .d4{right:10%;top:16%;}
+    /* 三排中心等距：d3 在 50%，上下排各偏离 24%，保证上-中-下间距相等 */
+    .d1{left:10%;top:26%;}
+    .d4{right:10%;top:26%;}
     .d2{left:14%;bottom:26%;}
     .d5{right:14%;bottom:26%;}
     #rollBtn{bottom:calc(6vmin + env(safe-area-inset-bottom));}
